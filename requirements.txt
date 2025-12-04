@@ -1,0 +1,9 @@
+openai-agents
+streamlit
+openai
+asyncio
+plotly
+nest_asyncio
+boto3
+tomli; python_version < '3.11'
+python-dotenv

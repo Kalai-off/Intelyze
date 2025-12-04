@@ -1,0 +1,8 @@
+[auth]
+# Set to empty list to allow all emails, or add specific emails to restrict
+allowed_emails = [
+   "kalaiarasu.work@gmail.com"
+]
+
+[openai]
+model = "o3"

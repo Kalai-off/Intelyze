@@ -1,0 +1,4 @@
+[auth]
+allowed_emails = [
+    "kalaiarasu.work@gmail.com"
+]
