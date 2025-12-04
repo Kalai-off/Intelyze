@@ -422,84 +422,40 @@ for k,v in [("authenticated",False),("username",None),("session_id",None)]: st.s
 st.session_state.setdefault("welcome_dismissed", False)
 st.session_state.setdefault("prefer_signup", False)
 
-# ---- LOGIN ----------------------------------------------------------------
-if not st.session_state.authenticated:
+# ---- AUTH (Google) ---------------------------------------------------------
+
+def _logout_and_clear():
+    for k in ["session_id", "welcome_dismissed"]:
+        st.session_state.pop(k, None)
+    st.logout()
+
+if not getattr(st, "user", None) or not st.user.is_logged_in:
     st.title("Intelyze")
     st.markdown(f'''
 <div class="auth-hero">
   <h2>Welcome</h2>
-  <p style="margin:0">Sign in with your email to continue</p>
+  <p style="margin:0">Sign in with your Google account to continue</p>
 </div>
 ''', unsafe_allow_html=True)
-    prefer_signup = st.session_state.get("prefer_signup", False)
-    if prefer_signup:
-        tab_signup, tab_login = st.tabs(["Sign up", "Login"])
-    else:
-        tab_login, tab_signup = st.tabs(["Login", "Sign up"])
+    st.button("Log in with Google", on_click=st.login)
+    st.stop()
 
-    with tab_login:
-        with st.form("login"):
-            u = st.text_input("Username or email")
-            p = st.text_input("Password", type="password")
-            st.session_state["prefer_signup"] = False
-            if st.form_submit_button("Log in"):
-                if not is_email_allowed(u):
-                    st.error("❌ This email is not on the allowed list. Contact support.")
-                elif auth(u, p):
-                    rec = find_user(u)
-                    uname = rec["username"] if rec else (u or "")
-                    st.session_state.update(authenticated=True, username=uname)
-                    st.session_state["display_name"] = rec.get("name") if rec else derive_name_from_username(uname)
-                    
-                    st.rerun()
-                else:
-                    st.error("Wrong credentials")
-
-    # Login footer CTA: New user? Sign up
-    st.markdown('<div class="auth-footer">New user? <strong>Sign up</strong> to create your account.</div>', unsafe_allow_html=True)
-            
-
-    with tab_signup:
-        st.markdown("Use your email to create an account. Only emails in the allowed list can sign up.")
-        with st.form("signup"):
-            full_name = st.text_input("Full name")
-            email = st.text_input("Email")
-            pwd = st.text_input("Password", type="password")
-            confirm = st.text_input("Confirm password", type="password")
-            create = st.form_submit_button("Create account")
-            if create:
-                email_norm = normalize_email(email)
-                name_norm = (full_name or "").strip()
-                if not name_norm:
-                    st.error("Name cannot be empty.")
-                elif user_exists(email_norm):
-                    st.error("An account with this email already exists.")
-                elif not is_email_allowed(email_norm):
-                    st.error("❌ This email is not on the allowed list. Contact support.")
-                elif not pwd:
-                    st.error("Password cannot be empty.")
-                elif pwd != confirm:
-                    st.error("Passwords do not match.")
-                else:
-                    add_user(email_norm, name_norm, pwd)
-                    st.success("Account created. You are now signed in.")
-                    st.session_state.update(authenticated=True, username=email_norm)
-                    st.session_state["display_name"] = name_norm
-                    st.session_state["prefer_signup"] = False
-                    st.rerun()
-
+# Enforce allowlist after login
+USER_EMAIL = getattr(st.user, "email", None) or ""
+if not is_email_allowed(USER_EMAIL):
+    st.error("This Google account is not on the allowed list. Contact support.")
+    st.button("Log out", on_click=_logout_and_clear)
     st.stop()
 
 # ---- sidebar --------------------------------------------------------------
-UID = uid(st.session_state.username)
-DISPLAY_NAME = st.session_state.get("display_name") or get_display_name(st.session_state.username)
+UID = uid(USER_EMAIL)
+DISPLAY_NAME = (getattr(st.user, "name", None) or get_display_name(USER_EMAIL))
 st.sidebar.title(f"Hi {DISPLAY_NAME}")
 st.sidebar.image(str(BASE / "assets" / "intelyze.ico"), width=32)
 
 # Logout just below greeting
 if st.sidebar.button("Log out"):
-    for k in ["authenticated","username","session_id","welcome_dismissed"]: st.session_state.pop(k,None)
-    st.rerun()
+    _logout_and_clear()
 
 # Small divider bar
 st.sidebar.markdown('<div class="mini-divider"></div>', unsafe_allow_html=True)
